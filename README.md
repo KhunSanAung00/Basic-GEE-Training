@@ -102,7 +102,7 @@ Exercises:
 
 ---
 
-# [Session 5 – Geometry and Visualization in GEE](sessions/05-Geometry.md)
+# [Session 5 – Geometry and Visualization in GEE](sessions/05.Geometry.md)
 
 Topics:
 - Creating Geometry using Geometry Tool
@@ -114,7 +114,7 @@ Topics:
 
 ---
 
-# [Session 6 – Working with ImageCollection](sessions/06-ImageCollection.md)
+# [Session 6 – Working with ImageCollection](sessions/06.ImageCollection.md)
 
 Topics:
 - Working with image collection
@@ -135,7 +135,7 @@ Exercises:
 
 ---
 
-# [Session 7 – Importing and Exporting data to GEE Asset](sessions/07-Importing and Exporting data to GEE Asset.md)
+# [Session 7 – Importing and Exporting data to GEE Asset](sessions/07.Importing_and_Exporting.md)
 
 Topics:
 - Prepare data in local machine
@@ -147,7 +147,7 @@ Exercises:
 
 ---
 
-# [Session 8 – Preparation for Training Sample Collection](sessions/08-Sample Preparation.md)
+# [Session 8 – Preparation for Training Sample Collection](sessions/08.Sample_Preparation.md)
 
 Topics:
 - Ground Truth
@@ -160,7 +160,7 @@ Exercises:
 
 ---
 
-# [Session 9 – Unsupervised Classification](sessions/09-Unsupervised Classification.md)
+# [Session 9 – Unsupervised Classification](sessions/09.Unsupervised_Classification.md)
 
 Topics:
 - Defining Number of Cluster
@@ -176,7 +176,7 @@ Exercises:
 
 ---
 
-# [Session 10 – Supervised Classification](sessions/10-Supervised Classification.md)
+# [Session 10 – Supervised Classification](sessions/10.Supervised_Classification.md)
 
 Topics:
 - Machine Learning Basics
