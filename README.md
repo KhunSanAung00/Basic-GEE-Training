@@ -77,7 +77,7 @@ Exercises:
 
 ---
 
-# [Session 4 – Working with Image Object in GEE](sessions/04-image.md)
+# [Session 4 – Working with Image Object in GEE](sessions/04.Image.md)
 
 Topics:
 - Working with Image Object in GEE
