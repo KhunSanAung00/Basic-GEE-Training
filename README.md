@@ -25,9 +25,9 @@ Participants will learn to:
 
 ---
 
-# - [Session 1 – Earth Observation Fundamentals](sessions/01.Earth_Observation_Fundamentals(Illustrated).md)
+# [Session 1 – Earth Observation Fundamentals](sessions/01.Earth_Observation_Fundamentals(Illustrated).md)
 
-Topics:
+**Topics:**
 - What is Earth Observation?
 - What is Remote Sensing?
 - Electromagnetic Spectrum
@@ -36,16 +36,16 @@ Topics:
 - Major Satellite Missions
 - Why Google Earth Engine?
 
-Exercises:
+**Exercises:**
 - EO Around Us
 - Superhero Vision
 - Choosing the Right Satellite
 
 ---
 
-# [Session 2 – Google Earth Engine & Basic JavaScript](02.GEE_Session_02_Basic_JavaScript.md)
+# [Session 2 – Google Earth Engine & Basic JavaScript](sessions/02.Basic_JavaScript.md)
 
-Topics:
+**Topics:**
 - GEE Code Editor
 - Variables
 - Arrays
@@ -54,14 +54,14 @@ Topics:
 - Geometry Creation
 - Loading Datasets
 
-Exercises:
+**Exercises:**
 - Find Your Hometown
 - Create Your First Point
 - Build Your First GEE App
 
 ---
 
-# [Session 3 – Working with Satellite Imagery](03.GEE_Session_03_Satellite_Imagery_Fundamental_Science.md)
+# [Session 3 – Working with Satellite Imagery](sessions/03.Satellite_Imagery_Fundamental_Science.md)
 
 Topics:
 - How Satellites See Earth
@@ -77,23 +77,51 @@ Exercises:
 
 ---
 
-# Session 4 – Visualization and False Color Composites
+# [Session 4 – Working with Image Object in GEE](sessions/04-image.md)
 
 Topics:
-- RGB Composites
-- False Color Composites
-- Image Stretching
-- Visual Interpretation
+- Working with Image Object in GEE
+- Image Visualization
+- Image Visualization Band Combination
+- Normalized Difference (Band Math)
+- Clipping Image
+
+Science:
+- Chlorophyll
+- Photosynthesis
+- Water Absorption
 
 Exercises:
 - Compare Band Combinations
+- Spectral Indices
+- NDVI, Generate NDVI Maps
+- EVI, Compare Vegetation Health
+- NDWI
+- NBR  
 - Interpret Land Cover Types
 
 ---
 
-# Session 5 – Cloud Filtering and Cloud-Free Composite
+# [Session 5 – Geometry and Visualization in GEE](sessions/05-Geometry.md)
 
 Topics:
+- Creating Geometry using Geometry Tool
+- Editing or Deleting a Geometry Object
+- Creating Geometry Programmatically
+- Converting Geometry to FeatureCollection
+- Creating FeatureCollection Using GUI Geometry Tool
+- Creating FeatureCollection
+
+---
+
+# [Session 6 – Working with ImageCollection](sessions/06-ImageCollection.md)
+
+Topics:
+- Working with image collection
+- ImageCollection Information and Metadata
+- Filtering an ImageCollection
+- Reducing an ImageCollection
+- Mapping Over an ImageCollection
 - Atmospheric Effects
 - Cloud Contamination
 - Cloud Masking
@@ -103,42 +131,23 @@ Topics:
 
 Exercises:
 - Create Cloud-Free Annual Composite
+- Cloud Filtering and Cloud-Free Composite
 
 ---
 
-# Session 6 – Spectral Indices
+# [Session 7 – Importing and Exporting data to GEE Asset](sessions/07-Importing and Exporting data to GEE Asset.md)
 
 Topics:
-- NDVI
-- EVI
-- NDWI
-- NBR
-
-Science:
-- Chlorophyll
-- Photosynthesis
-- Water Absorption
+- Prepare data in local machine
+- Upload Data to GEE Asset
+- Importing datasets from GEE Asset to JavaScript Code
+- Combining two FeatureCollecton into one FeatureCollection 
 
 Exercises:
-- Generate NDVI Maps
-- Compare Vegetation Health
 
 ---
 
-# Session 7 – Time Series Analysis
-
-Topics:
-- Phenology
-- Seasonal Dynamics
-- NDVI Trends
-- EVI Trends
-
-Exercises:
-- Create Time-Series Charts
-
----
-
-# Session 8 – Training Sample Collection
+# [Session 8 – Preparation for Training Sample Collection](sessions/08-Sample Preparation.md)
 
 Topics:
 - Ground Truth
@@ -151,9 +160,13 @@ Exercises:
 
 ---
 
-# Session 9 – Unsupervised Classification
+# [Session 9 – Unsupervised Classification](sessions/09-Unsupervised Classification.md)
 
 Topics:
+- Defining Number of Cluster
+- Sample the image
+- Unsupervised Classification
+- Post Classification
 - Clustering
 - K-Means
 - Spectral Similarity
@@ -163,12 +176,17 @@ Exercises:
 
 ---
 
-# Session 10 – Supervised Classification
+# [Session 10 – Supervised Classification](sessions/10-Supervised Classification.md)
 
 Topics:
 - Machine Learning Basics
 - Random Forest
 - Classification Workflow
+- Land Cover Classes
+- Input Seasonal Composite Image
+- Training Sample
+- Supervised Classification
+- Classification Result
 
 Exercises:
 - Generate Land Cover Map
@@ -190,24 +208,11 @@ Exercises:
 
 ---
 
-# Session 12 – Final Project
+# Session 12 – Application
 
-Workflow:
-1. Define AOI
-2. Acquire Imagery
-3. Cloud Filtering
-4. Composite Creation
-5. NDVI Calculation
-6. Training Sample Collection
-7. Classification
-8. Accuracy Assessment
-9. Export Results
-
-Deliverables:
-- NDVI Map
-- Land Cover Map
-- Accuracy Report
-
+Topics:
+1. Datasets
+2. 
 ---
 
 ## Recommended Datasets
