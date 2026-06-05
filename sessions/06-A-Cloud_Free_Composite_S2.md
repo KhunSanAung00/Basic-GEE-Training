@@ -121,6 +121,13 @@ var trueColorVis = {
   min: 0,
   max: 0.3
 };
+```
+
+## Reference
+
+[Cloud filtering for Sentinel-2 Images](https://code.earthengine.google.com/c235361e44c8ca659440bb469cd5e312)
+
+
 
 Map.addLayer(composite, trueColorVis, 'Cloud-free Sentinel-2 composite');
 ```
