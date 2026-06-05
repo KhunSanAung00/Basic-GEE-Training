@@ -125,14 +125,18 @@ Topics:
 - Atmospheric Effects
 - Cloud Contamination
 - Cloud Masking
+
+## Create Cloud Free Composite
 - Median Composite
 - Mosaic
 - Quality Mosaic
 
+## [Cloud Filtering and Cloud-Free Composite - Sentinel-2](sessions/06-Create_Cloud_Free_Sentinel2_Composite.md) 
 Exercises:
 - Create Cloud-Free Annual Composite
-- Cloud Filtering and Cloud-Free Composite
 
+## Mapping over imageCollection
+- Creating NDVI Timeseries
 ---
 
 # [Session 7 – Importing and Exporting data to GEE Asset](sessions/07.Importing_and_Exporting.md)
