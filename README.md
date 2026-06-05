@@ -126,7 +126,7 @@ Topics:
 - Cloud Contamination
 - Cloud Masking
 
-## [6.A. Create Cloud-Free Composite - Sentinel-2 Images](sessions/06.A-Cloud_Free_Composite_S2.md)
+## [6.A. Create Cloud-Free Composite - Sentinel-2 Images](sessions/06-A.Cloud_Free_Composite_S2.md)
 - Cloud Filtering
 - Median Composite
 - Mosaic
@@ -136,7 +136,7 @@ Topics:
 
 - Cloud Filtering in Landsat series (5, 7, 8 & 9)
 
-## [6-C. Creating Cloud Free Sentinel-2 Composite Using Cloud Probability](sessions/06-Create_Cloud_Free_Sentinel2_Composite.md)
+## [6-C. Creating Cloud Free Sentinel-2 Composite Using Cloud Probability](sessions/06-C.Create_Cloud_Free_Sentinel2_Composite.md)
 
 Exercises:
 - Create Cloud-Free Annual Composite
