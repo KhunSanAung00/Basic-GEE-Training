@@ -1,0 +1,787 @@
+https://code.earthengine.google.com/78bc92908035af266fb0f36a2b0089de
+
+/*************************
+ * // Script: MODIS EVI_Phenology for Crop Sample-Template
+ * // /CropMMR
+ * 
+ * // Job 
+ * 
+ * Ref: 
+ * 
+ * ***********************/
+ 
+/// STEPS ========================
+// 1. Plot base MODIS Land Cover type, filter to get Crop layer
+// 2. run quick unsupervised classification from embedding & EVI composite
+// 2. Collect Rice and Others Sample Polygon from EVI profile, output: (Polys)
+// 3. Generate Sample point from Polygon (Ps)
+// 4. Run ML Model. output: Primitive (P)
+// 5. 
+
+// ================================
+// INPUT
+// ================================ 
+var startDate = '2023-05-01';
+var endDate   = '2026-05-01';
+var numSample = 1000;
+var scale = 1000;
+
+// ================================
+// ROI
+// ================================
+var mmr = ee.FeatureCollection('projects/servir-mekong/Boundary/MIMU_v94/mmr');
+print('Choose a State',adm1.aggregate_histogram('ST'))
+
+adm1 = adm1.filter(ee.Filter.eq('ST','Ayeyarwady'))
+//
+var roi = adm1;
+var aoi = roi;
+
+Map.setOptions("HYBRID")
+
+// var roi = ee.FeatureCollection("projects/sentinelasia/assets/AOI/asean_1degGrid");
+// print(roi)
+// roi = roi.filter(ee.Filter.and(ee.Filter.gte("lat",20),
+// ee.Filter.lte("lon",97)))
+
+/////=============
+// rice primitive
+//===================
+  // ---------- Helper: load IC-based probability layer ----------
+function loadProbIC(assetId, bandName, scaleFactor) {
+  var col = ee.ImageCollection(assetId);
+  var standardized = col.map(function(img) {
+    var firstBand = img.bandNames().get(0);
+    var out = img.select([firstBand]).rename(bandName).toFloat();
+    if (scaleFactor) out = out.multiply(scaleFactor);
+    return out;
+  });
+  return standardized.mosaic();
+}
+
+
+
+////////////////////////////////
+/// UI 
+// Define the visualization parameters.
+var visParams = {
+  min: 20,
+  max: 95,
+  //palette: ['blue', 'lightgreen', 'cyan', 'white', 'yellow', 'orange', 'red', 'purple']
+  palette: ['ADD8E6', '90EE90', '00FFFF', 'FFFFFF', 'FFFF00', 'FFA500', 'FF0000', '800080']
+};
+
+// var GnRd = {"opacity":1,"bands":["rice"],"min":0,"max":100,"palette":["016800","04e200","74ff7e","fcfff7","e4ff04","ff7676","e60000","83007f"]};
+
+var rice_ukpact = loadProbIC('projects/servir-mekong/uk_pact/rice_2024', 'rice');
+
+
+// Load Embedding
+var embedding = ee.ImageCollection('GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL');
+
+
+var emb24 = embedding
+      .filterDate('2024-01-01', '2025-01-01')
+      .filterBounds(roi)
+      .mosaic();
+
+var emb25 = embedding
+      .filterDate('2025-01-01', '2026-01-01')
+      .filterBounds(roi)
+      .mosaic();
+
+// Visualize three axes of the embedding space as an RGB.
+var visEmb = {min: -0.3, max: 0.3, bands: ['A01', 'A16', 'A09']};
+
+Map.addLayer(emb24, visEmb, '2024 embeddings');
+Map.addLayer(emb25, visEmb, '2025 embeddings');
+
+// Map.addLayer(rice_ukpact, visParams, 'rice',false)
+
+
+// ================================
+// MODIS LAND COVER
+// ================================
+var mcd = ee.Image('MODIS/061/MCD12Q1/2024_01_01')
+                .clip(roi);
+
+var igbpLandCover = mcd.select('LC_Type1');
+var modisCrop = igbpLandCover.eq(12)
+
+// Visualization
+var igbpLandCoverVis = {
+  min: 1,
+  max: 17,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900',
+    'c6b044', 'dcd159', 'dade48', 'fbff13', 'b6ff05',
+    '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c', '69fff8',
+    'f9ffa4', '1c0dff'
+  ]
+};
+
+Map.addLayer(
+  igbpLandCover,
+  igbpLandCoverVis,
+  'IGBP Land Cover'
+);
+Map.addLayer(modisCrop,{},'MODIS-Crop')
+
+//==================================
+/// JRC Yearly Water for Seasonal Water & Summer Rice
+// =================================
+
+var jrcStart = ee.Date.fromYMD(2021,1,1),
+    jrcEnd = ee.Date.fromYMD(2022,1,1)
+
+var water = ee.ImageCollection("JRC/GSW1_4/YearlyHistory");
+
+water = water.filterDate(jrcStart, jrcEnd).first()
+
+var jrcVisualization = {
+  bands: ['waterClass'],
+  min: 0.0,
+  max: 3.0,
+  palette: ['cccccc', 'ffffff', '99d9ea', '0000ff']
+};
+
+Map.addLayer(water.clip(roi), jrcVisualization, 'Water Class');
+
+
+// ================================
+// LOAD + PREPARE EVI
+// ================================
+var mod = ee.ImageCollection('MODIS/061/MOD13Q1')
+            .filterDate(startDate, endDate)
+            .select('EVI')
+            .map(function(img){
+              return img//.multiply(0.0001)
+                        .copyProperties(img, ['system:time_start']);
+            });
+
+var myd = ee.ImageCollection('MODIS/061/MYD13Q1')
+            .filterDate(startDate, endDate)
+            .select('EVI')
+            .map(function(img){
+              return img//.multiply(0.0001)
+                        .copyProperties(img, ['system:time_start']);
+            });
+
+// Merge + sort (CRITICAL)
+var mcdevi = mod.merge(myd)
+                .sort('system:time_start');
+                
+var windowSize = 3;
+
+var list = mcdevi.toList(mcdevi.size());
+
+var sma = ee.ImageCollection(
+  ee.List.sequence(0, list.size().subtract(1)).map(function(i) {
+    i = ee.Number(i);
+
+    var start = i.subtract(windowSize).max(0);
+    var end   = i.add(windowSize).min(list.size().subtract(1));
+
+    var subset = ee.ImageCollection(
+      list.slice(start, end.add(1))
+    );
+
+    var mean = subset.mean();
+
+    var ref = ee.Image(list.get(i));
+
+    return mean.set('system:time_start', ref.get('system:time_start'));
+  })
+);
+
+var ndviVis = {
+  min: 0,
+  max: 0.90,
+  palette: [
+    'ffffff', 'ce7e45', 'df923d', 'f1b555', 'fcd163', '99b718', '74a901',
+    '66a000', '529400', '3e8601', '207401', '056201', '004c00', '023b01',
+    '012e01', '011d01', '011301'
+  ],
+};
+
+var ndVis = {"min":-500,"max":5000,
+  "palette":["ffffff","ce7e45","df923d","f1b555","fcd163","99b718","74a901","66a000","529400","3e8601","207401","056201","004c00","023b01","012e01","011d01","011301"]};
+
+
+Map.addLayer(sma,ndVis,'EVI Timeseries',false)
+
+
+
+// ================================
+// FUNCTION: SEASON COMPOSITE, Mean 
+// ================================
+function getSeasonComposite(start, end, name) {
+
+  var col = sma.filterDate(start, end);
+
+  // print(name + " image count:", col.size());
+
+  return ee.Image(
+    ee.Algorithms.If(
+      col.size().gt(0),
+      col.mean().rename(name),
+      ee.Image(0).rename(name).selfMask()
+    )
+  );
+}
+
+// ================================
+// DEFINE SEASONS
+// ================================
+var winter = getSeasonComposite('2023-11-01', '2024-02-28', 'winter');
+var summer = getSeasonComposite('2024-03-01', '2024-05-31', 'summer');
+var rainy  = getSeasonComposite('2024-06-01', '2024-10-31', 'rainy');
+
+// ================================
+// EXTRA FEATURE (Bareland proxy)
+// ================================
+
+// var pct = evi(ee.Reducer.percentile([25,75], 'pct')) 
+var pct = sma.reduce(ee.Reducer.percentile([25, 75]));
+// print(pct)
+
+// ================================
+// BUILD CLASSIFICATION IMAGE
+// ================================
+var image = emb25
+  // .addBands(winter)
+  // .addBands(summer)
+  // .addBands(rainy)
+  // .addBands(pct) //
+  .clip(roi)
+
+var img = emb24  // .addBands(winter)
+  // .addBands(summer)
+  // .addBands(rainy)
+  // .addBands(pct) //
+  // .updateMask(modisCrop)
+  .clip(roi)
+
+
+
+// DEBUG
+print("for Quick Classification:", image);
+
+var rgb = ee.Image([rainy,winter,summer])
+
+// ================================
+// VISUAL CHECK
+// ================================
+
+// Map.addLayer(winter, ndviVis, 'Winter',false);
+// Map.addLayer(summer, ndviVis, 'Summer',false);
+// Map.addLayer(rainy,  ndviVis, 'Rainy',false);
+// Map.addLayer(pct.select('EVI_p75'),  ndviVis, '75 %CT-Vegetated',false);
+Map.addLayer(pct.select('EVI_p25'),  ndVis, '25 %CT-Bareland',false);
+Map.addLayer(rgb.clip(roi),imageVisParam3,'R-G-B')
+
+
+
+
+
+///////////////////////////////////////
+/// Inspector Tool
+// Create User Interface portion
+//////////////////////////////////////////
+
+//Map.centerObject(aoi, 8);
+Map.style().set('cursor', 'crosshair');
+
+// Create a panel to hold widgets
+var panel = ui.Panel();
+panel.style().set('width', '400px');   
+
+// Set a callback function for when the user clicks the map
+Map.onClick(function(coords) {
+  // Create or update the location label (the second widget in the panel)
+  var location = 'lon: ' + coords.lon.toFixed(6) + ' ' +
+                'lat: ' + coords.lat.toFixed(6);
+  panel.widgets().set(1, ui.Label(location));
+
+  // Remove the previous red dot layer, if it exists
+  Map.layers().forEach(function(layer) {
+    if (layer.getName() === 'Inspected point') {
+      Map.remove(layer);
+    }
+  });
+  
+  // Add a new red dot to the map where the user clicked
+  var point = ee.Geometry.Point(coords.lon, coords.lat);
+  Map.layers().set(Map.layers().length(), ui.Map.Layer(point, {color: 'FF0000'}, 'Inspected point'));
+
+  var smachart = ui.Chart.image.series({
+    imageCollection: sma,
+    region: point,
+    reducer: ee.Reducer.mean(),
+    scale: 250
+  })
+  .setOptions({
+    title: 'Smoothed Combined EVI (Terra + Aqua)',
+    vAxis: {title: 'EVI (scaled)'},
+    hAxis: {title: 'Date'},
+    lineWidth: 2,
+    pointSize: 2
+  });
+
+  // Add the widget to the panel
+  panel.widgets().set(2, smachart);
+})
+
+// Add the panel to the ui.root
+ui.root.add(panel);
+
+
+
+// Create the legend title.
+var legendTitle = ui.Label({
+  value: 'Probability',
+  style: {fontWeight: 'bold', fontSize: '14px', margin: '0 0 4px 0', padding: '0'}
+});
+
+// Create the continuous color bar.
+function makeColorBarParams(palette) {
+  return {
+    bbox: [0, 0, 1, 0.1],
+    dimensions: '60x10',
+    format: 'png',
+    min: 0,
+    max: 1,
+    palette: palette,
+  };
+}
+
+// Create the color bar for the legend.
+var colorBar = ui.Thumbnail({
+  image: ee.Image.pixelLonLat().select(0),
+  params: makeColorBarParams(visParams.palette),
+  style: {stretch: 'horizontal', margin: '0 0 4px 0', height: '20px'},
+});
+
+// Create labels for min, mid, and max of the legend., min:left,
+var legendLabels = ui.Panel({
+  widgets: [
+    ui.Label(visParams.min, {margin: '4px 8px', textAlign: 'left', stretch: 'horizontal'}),
+    ui.Label('40', {margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
+    ui.Label('60', {margin: '4px 8px', textAlign: 'center', stretch: 'horizontal'}),
+    ui.Label(visParams.max, {margin: '4px 8px', textAlign: 'right', stretch: 'horizontal'})
+  ],
+  layout: ui.Panel.Layout.flow('horizontal')
+});
+
+// Add the title, color bar, and labels to the legend panel.
+var legendPanel = ui.Panel({
+  widgets: [legendTitle, colorBar, legendLabels],
+  style: {
+    position: 'bottom-left',
+    padding: '8px 15px',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)'
+  }
+});
+
+// Add the legend panel to the map.
+Map.add(legendPanel);
+
+
+// ================================
+// LEGEND
+// ================================
+var modisLegend = {
+  1: {color: '#05450a', label: 'Evergreen Needleleaf Forests'},
+  2: {color: '#086a10', label: 'Evergreen Broadleaf Forests'},
+  3: {color: '#54a708', label: 'Deciduous Needleleaf Forests'},
+  4: {color: '#78d203', label: 'Deciduous Broadleaf Forests'},
+  5: {color: '#009900', label: 'Mixed Forests'},
+  6: {color: '#c6b044', label: 'Closed Shrublands'},
+  7: {color: '#dcd159', label: 'Open Shrublands'},
+  8: {color: '#dade48', label: 'Woody Savannas'},
+  9: {color: '#fbff13', label: 'Savannas'},
+  10: {color: '#b6ff05', label: 'Grasslands'},
+  11: {color: '#27ff87', label: 'Permanent Wetlands'},
+  12: {color: '#c24f44', label: 'Croplands'},
+  13: {color: '#a5a5a5', label: 'Urban and Built-up'},
+  14: {color: '#ff6d4c', label: 'Cropland/Natural Mosaic'},
+  15: {color: '#69fff8', label: 'Snow and Ice'},
+  16: {color: '#f9ffa4', label: 'Barren'},
+  17: {color: '#1c0dff', label: 'Water Bodies'}
+};
+
+// ================================
+// LEGEND FUNCTION
+// ================================
+function addLegend(legendDict, title) {
+
+  var legend = ui.Panel({
+    style: {
+      position: 'bottom-left',
+      padding: '8px 15px',
+      backgroundColor: 'white'
+    }
+  });
+
+  legend.add(ui.Label({
+    value: title,
+    style: {
+      fontWeight: 'bold',
+      fontSize: '14px',
+      margin: '0 0 6px 0'
+    }
+  }));
+
+  Object.keys(legendDict).forEach(function(key) {
+
+    var entry = legendDict[key];
+
+    var colorBox = ui.Label({
+      style: {
+        backgroundColor: entry.color,
+        padding: '8px',
+        margin: '0 0 4px 0'
+      }
+    });
+
+    var desc = ui.Label({
+      value: entry.label,
+      style: {
+        margin: '0 0 4px 6px',
+        fontSize: '11px'
+      }
+    });
+
+    legend.add(
+      ui.Panel(
+        [colorBox, desc],
+        ui.Panel.Layout.Flow('horizontal')
+      )
+    );
+
+  });
+
+  Map.add(legend);
+}
+
+// Add legend 
+addLegend(modisLegend, 'MODIS LC_Type1');
+
+
+
+
+
+
+// ================================
+// UNSUPERVISED CLASSIFICATION
+// ================================
+
+
+// ================================
+// SAMPLING
+// ================================
+
+var training = image.sample({
+  region: roi,
+  scale: scale,
+  numPixels: numSample,
+  seed: 100,
+  tileScale: 16,
+  geometries: false
+});
+
+
+// ================================
+// CLUSTERING
+// ================================
+
+var  nClusters = 20
+
+// 1. K-Mean method, Faster
+var clusterer = ee.Clusterer.wekaKMeans({
+  nClusters: nClusters
+})
+.train({
+  features: training,
+  inputProperties: image.bandNames()
+});
+
+
+// 2. wekaXMeans method, More adaptive but slower
+// var clusterer = ee.Clusterer.wekaXMeans({
+//   minClusters: 5,
+//   maxClusters: 20
+// })
+// .train({
+//   features: training,
+//   inputProperties: image.bandNames()
+// });
+
+
+// ================================
+// APPLY CLUSTER
+// ================================
+
+var clustered = image
+  .updateMask(modisCrop) // better for different crop types and different crop phelology
+  .cluster(clusterer)
+  .toInt16();
+
+
+// ================================
+// DISPLAY
+// ================================
+// Map.addLayer(clustered, {}, 'Unsupervised Classification');
+Map.addLayer(clustered.randomVisualizer(), {}, 'Unsupervised Classification');
+
+
+
+
+///////////
+// var target = ee.FeatureCollection([rainyRice]).flatten()
+// var target = ee.FeatureCollection([summerRice]).flatten()
+// var target = ee.FeatureCollection([doubleCropRice]).flatten()
+var target = ee.FeatureCollection([deepWaterRice]).flatten()
+// var target = ee.FeatureCollection([rainyRice, summerRice, doubleCropRice, deepWaterRice]).flatten()
+
+var others = ee.FeatureCollection([forest, shrubs, settlement, lake, river, aquaFarm, cropNotRice, 
+  rainyRice,
+  summerRice,
+  doubleCropRice,
+  // deepWaterRice,
+  mangrove
+]).flatten()
+
+
+///////////////////////////////
+//// Import modules
+// use ':' for folder separation
+
+var Poly2Point = require(
+  'users/khunaung/CropMMR:module/Polygon2Points'
+);
+
+var Classifier = require(
+  'users/khunaung/CropMMR:module/Classifier'
+);
+
+// feed, fc polygon, density=number of sample points per hectare, class code in the output features
+var targetPoints = Poly2Point.Polygon2PointSamples(target,0.2,1) // 1 for target land cover
+var otherPoints = Poly2Point.Polygon2PointSamples(others,0.5,0) // 0 for other
+print(targetPoints.first(),otherPoints.first())
+
+Map.addLayer(roi,{color:'coral'},'ROI')
+Map.addLayer(targetPoints,{color:'yellow'},'RiceSample Point')
+Map.addLayer(otherPoints,{color:'grey'},'OtherSample Point')
+
+
+
+
+// =====================================
+// Inputs for Random Forest Model
+// =====================================
+
+// ======================================================
+// 2. SETTINGS
+// ======================================================
+
+var YEAR = 2025;
+var SCALE = 100;
+var THRESHOLD = 50;
+var N_TREES = 100;
+var MAX_BANDS = 64;
+var SPLIT = 0.7;
+
+
+// ======================================================
+// 11. BAND INFO
+// ======================================================
+
+var bandNames = image.bandNames();
+
+print('Bands:', bandNames);
+
+print(
+  'Number of bands:',
+  bandNames.size()
+);
+
+
+
+// ======================================================
+// 12. RUN CLASSIFIER
+// ======================================================
+
+// exports.randomForest
+// exports.gradientTreeBoost
+
+var result = Classifier.randomForest({
+  aoi: roi,
+  image: image,
+  cropPoints: targetPoints,
+  otherPoints: otherPoints,
+  scale: SCALE,
+  threshold: THRESHOLD,
+  split: SPLIT,
+  nTrees: N_TREES,
+  maxBands: MAX_BANDS,
+  shrinkage: 0.05,
+  samplingRate: 0.7,
+  maxNodes: 20
+});
+
+
+// var result = Classifier.gradientTreeBoost({
+//   aoi: roi,
+//   image: image,
+//   cropPoints: targetPoints,
+//   otherPoints: otherPoints,
+//   scale: SCALE,
+//   threshold: THRESHOLD,
+//   split: SPLIT,
+//   nTrees: N_TREES,
+//   maxBands: MAX_BANDS,
+//   shrinkage: 0.05,
+//   samplingRate: 0.7,
+//   maxNodes: 20
+// });
+
+var vis = {min: 20,  max: 95,  palette:['lightblue','cyan','yellow','orange','red','purple']};
+
+Map.addLayer(result.probability, vis, 'RF Probability');
+
+/*
+// ======================================================
+// 13. OUTPUTS
+// ======================================================
+
+var probability = result.probability;
+
+var importantBands = result.importantBands;
+
+var metrics = result.metrics;
+
+
+// ======================================================
+// 14. PRINT RESULTS
+// ======================================================
+
+print(
+  'Most Important Bands:',
+  importantBands
+);
+
+print(
+  'Overall Accuracy:',
+  metrics.OA
+);
+
+print(
+  'Kappa:',
+  metrics.Kappa
+);
+
+print(
+  'Producer Accuracy:',
+  metrics.PA
+);
+
+print(
+  'Consumer Accuracy:',
+  metrics.CA
+);
+
+print(
+  'Confusion Matrix:',
+  metrics.confusionMatrix
+);
+
+
+// ======================================================
+// 15. VISUALIZATION
+// ======================================================
+
+
+
+Map.addLayer(
+  probability.clip(roi),
+  vis,
+  MODEL + ' Probability'
+);
+
+
+
+// =====================================
+// Outputs
+// =====================================
+var probability = result.probability;
+
+print(
+  'Important Bands:',
+  result.importantBands
+);
+
+print(
+  'Overall Accuracy:',
+  result.metrics.OA
+);
+
+Map.addLayer(
+  probability,
+  {
+    min: 20,
+    max: 95,
+    palette: [
+      'lightblue',
+      'yellow',
+      'orange',
+      'red'
+    ]
+  },
+  'Probability'
+);
+
+
+// ======================================================
+// 19. EXPORT
+// ======================================================
+
+// Export.image.toAsset({
+//   image: probability.toFloat(),
+//   description: 'CropProbability_' + YEAR,
+//   assetId:
+//     'projects/servir-mekong/output/' +
+//     'CropProbability_' + YEAR,
+//   region: aoi.geometry(),
+//   scale: 10,
+//   maxPixels: 1e13
+// });
+
+
+// ======================================================
+// 20. OPTIONAL HISTOGRAM
+// ======================================================
+
+var chart = ui.Chart.image.histogram({
+  image: probability,
+  region: aoi,
+  scale: 100,
+  maxPixels: 1e10
+})
+.setOptions({
+  title: 'Probability Histogram',
+  hAxis: {
+    title: 'Probability'
+  },
+  vAxis: {
+    title: 'Count'
+  }
+});
+
+print(chart);
+
+/*************/
+
+
+
+
