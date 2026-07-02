@@ -203,18 +203,15 @@ Exercises:
 
 ---
 
-# Session 11 – Accuracy Assessment
+# [Session 11. Machine Learning - Random Forest Model](sessions/11.Machine Learning - Random Forest Model.md)
+
 
 Topics:
-- Validation Data
-- Confusion Matrix
-- Overall Accuracy
-- Producer Accuracy
-- User Accuracy
-- Kappa
-
-Exercises:
-- Evaluate Classification Results
+- Training Data Preparation
+- Target Land Cover Class
+- Non-target Land Cover Class
+- Machine Learning Random Forest Model
+- Model Accuracy Matrix
 
 ---
 
@@ -235,11 +232,3 @@ Topics:
 - ESA WorldCover
 
 ---
-
-## Course Philosophy
-
-Learn the science first.
-Understand the satellite second.
-Write the code third.
-
-The goal is to use Earth Observation to solve real-world environmental and resource management problems.
