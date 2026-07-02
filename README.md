@@ -203,7 +203,7 @@ Exercises:
 
 ---
 
-# [Session 11. Machine Learning - Random Forest Model](sessions/11.Machine Learning - Random Forest Model.md)
+# [Session 11. Machine Learning - Random Forest Model](sessions/11.Machine-Learning-Random-Forest-Model.md)
 
 
 Topics:
